@@ -1,15 +1,12 @@
 package com.ahnu.app.service;
 
-import com.ahnu.app.bean.AreaItem;
 import com.ahnu.app.bean.FieldItem;
 import com.ahnu.app.bean.Item;
 import com.ahnu.app.bean.SubmitForm;
 import com.ahnu.app.common.ApiConstant;
-import com.ahnu.app.common.Beanutils;
 import com.ahnu.app.common.EmailConstant;
 import com.ahnu.app.common.UserConstant;
 import com.ahnu.app.dao.RequestDao;
-import com.ahnu.app.dao.SendDao;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -46,8 +43,7 @@ public class Task {
             JSONObject datas = getFormList();
             //判断是否跳转到登录页面
             if (datas.containsKey(RESP_LOGIN_KEY)) {
-                SendDao.send(UserConstant.COOKIE + "\n" + datas, EmailConstant.FAIL + ",登录过期");
-
+                System.out.println("登录过期");
             }
             JSONArray formList = datas.getJSONArray("rows");
             if (formList == null) {
@@ -56,37 +52,34 @@ public class Task {
             for (int i = 0; i < formList.size(); i++) {
                 JSONObject jsonRow = formList.getJSONObject(i);
                 Integer isHandled = jsonRow.getInteger("isHandled");
-                //查看是否已经提交
-                if (!isHandled.equals(0)) {
+                int priority=jsonRow.getIntValue("priority");
+                //查看是否已经提交，并看是否是极重要任务
+                if (!isHandled.equals(0)|| (priority-5)<0) {
                     continue;
                 }
                 //这个 wid =collectorWid;
                 String wid = jsonRow.getString("wid");
                 String formWid = jsonRow.getString("formWid");
                 submitForm.setFormWid(formWid);
-                submitForm.setAddress("");
+                submitForm.setAddress("河北保定莲池区");
                 submitForm.setCollectWid(wid);
                 String schoolTaskWid = getSchoolTaskWid(wid);
                 submitForm.setSchoolTaskWid(schoolTaskWid);
                 List<Item> form = getForm(formWid, wid);
-                if (form.size() != 3) {
-                    SendDao.send(EmailConstant.FAIL + ",今天可能有多个表单", "提交失败");
-                    continue;
-                }
                 submitForm.setForm(form);
                 if (submit(submitForm)) {
-                    SendDao.send("提交成功", EmailConstant.SUCCESS);
+                    System.out.println("提交成功");
 
                     return;
                 } else {
-                    SendDao.send("提交失败:" + JSON.toJSONString(submitForm), EmailConstant.FAIL);
+                    System.out.println("提交失败！");
                     return;
                 }
 
             }
 
         } catch (Exception ex) {
-            SendDao.send(EmailConstant.FAIL + ",异常信息：" + ex.getMessage(), "出现异常");
+            System.out.println("异常信息："+ex.getMessage());
         }
 
 
@@ -126,40 +119,26 @@ public class Task {
         List<Item> form = new ArrayList<Item>(4);
         for (int j = 0; j < jsonArray.size(); j++) {
             Item item = jsonArray.getObject(j, Item.class);
-            //第一个input
-            if ("1".equals(item.getSort())) {
-                AreaItem areaItem = new AreaItem();
-                Beanutils.copyProperties(item, areaItem);
-                areaItem.setFormWid(formWid);
-                areaItem.setValue("浙江省/杭州市/下城区");
-                areaItem.setArea1("浙江省");
-                areaItem.setArea2("杭州市");
-                areaItem.setArea3("下城区");
-                form.add(areaItem);
-                //第二个input
-            } else if ("2".equals(item.getSort())) {
+            String ind=item.getSort();
+            //为每一项填上需要的值
+            if (ind.equals("1")||ind.equals("5")) {//选择项填写
                 item.setFormWid(formWid);
-                item.setValue("在实习或工作单位");
+                if (ind.equals("1"))
+                        item.setValue("小于");
+                else if(ind.equals("5"))
+                        item.setValue("身体健康，正常");
                 List<FieldItem> fieldItems = new ArrayList<FieldItem>();
                 for (FieldItem fieldItem : item.getFieldItems()) {
-                    if (fieldItem.getContent().equals("在实习或工作单位")) {
+                    if (fieldItem.getContent().contains("健康")||fieldItem.getContent().equals("小于")) {
                         fieldItem.setIsSelected(null);
                         fieldItems.add(fieldItem);
                     }
                 }
                 item.setFieldItems(fieldItems);
                 form.add(item);
-                //第三个input
-            } else if ("3".equals(item.getSort())) {
+            } else if (ind.equals("2")||ind.equals("3")||ind.equals("4")) {//填空项填写
                 item.setFormWid(formWid);
-                List<FieldItem> fieldItems = new ArrayList<FieldItem>();
-                for (FieldItem fieldItem : item.getFieldItems()) {
-                    if (fieldItem.getContent().equals("健康")) {
-                        fieldItem.setIsSelected(null);
-                        fieldItems.add(fieldItem);
-                    }
-                }
-                item.setFieldItems(fieldItems);
+                item.setValue("36.6");
                 form.add(item);
             }
 

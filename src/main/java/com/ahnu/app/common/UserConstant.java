@@ -8,15 +8,15 @@ package com.ahnu.app.common;
  */
 public interface UserConstant {
     /**
-     * 安徽师范大学的域名
+     *
      * 请求的学校域名；每个学校都不相同
      */
-    String DOMAIN = "https://ahnu.cpdaily.com";
+    String DOMAIN = "https://netncepu.campusphere.net"; //NCEPU
 
     /**
      * 不退出就固定不变的值
      */
-    String CPDAILY_EXTENSION = "";
+    String CPDAILY_EXTENSION = "";//经测试，只在数据提交时才能抓取
 
 
     /**
